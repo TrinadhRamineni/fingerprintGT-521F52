@@ -1,11 +1,16 @@
 import codecs
 import logging
 import signal
-
+import RPi.GPIO as GPIO
 import serial
 import time
 
 import settings
+
+GPIO.setmode(GPIO.BOARD)
+GPIO.setwarnings(False)
+GPIO.setup(11,GPIO.OUT)
+GPIO.setup(12,GPIO.OUT)
 
 logging.basicConfig(format="[%(name)s][%(asctime)s] %(message)s")
 logger = logging.getLogger("Fingerprint")
@@ -378,6 +383,14 @@ class Fingerprint():
             ack, _, _, _ = self._read_packet()
             return ack
         return None
+    
+    def deleteid(self, did):
+        res = self._send_packet("DeleteID", did)
+        if res:
+            ack, _, _, _ = self._read_packet()
+            return ack
+        
+                        
 
     def identify(self):
         if not self.capture_finger():
@@ -401,35 +414,77 @@ if __name__ == '__main__':
 
     if f.init():
         print("Open: %s" % str(f.open()))
-        '''
+        
+        #f.delete()
         count = f.get_enrolled_cnt()
+        
         ch = 0
         while ch != 4:
+            print("no : of enrolled : %s" % str(count))
             print("1.Enroll")
-            print("2.Delete")
-            print("3.Verify")
-            print("4.Exit")
+            #print("2.Delete")
+            print("2.Verify")
+            print("3.Exit")
+            f1 = 0
             ch = input("Your Choice")
             if ch == '1':
                 while f.get_enrolled_cnt() != count + 1:
-                    f.enroll()
                     time.sleep(0.5)
-                count = count + 1
-                print("Enrolled!!!!")           
+                    idtemp = str(f.identify())
+                    #idtemp = -1
+                    if idtemp > "-1" and idtemp != "None":
+                        print("You are an already existing User with ID : %s" %str(idtemp+1))
+                        break
+                    else:
+                        if f.capture_finger():
+                            f.enroll()
+                            time.sleep(0.5)
+                            count = count + 1
+                            print(" Successfully Enrolled!!!!")
+                            break
+                        else:
+                            if f1 == 0:
+                                print("e Place your finger")
+                                f1 = 1
+                        
                 
+            #if ch == '2':
+             #   did = input("Enter ID number to delete : ")
+              #  print("Delete : %s" % str(f.deleteid(did)))
+               # count = 0
+            
             if ch == '2':
-                print("Delete : %s" % str(f.delete()))
+                print("Place your Finger")
+                #print(f.capture_finger())
+              
+                #time.sleep(2)
+
+                idtemp = f.identify()
+                if f.capture_finger():
+                    if idtemp == -1:
+                        GPIO.output(11,GPIO.HIGH)
+                        print("You are not a valid user ")
+                        time.sleep(1)
+                        GPIO.output(11,GPIO.LOW)
+                    elif idtemp >= 0:
+                        GPIO.output(12,GPIO.HIGH)
+                        print("You are an already existing User with ID : %s" %str(idtemp+1))
+                        time.sleep(1)
+                        GPIO.output(12,GPIO.LOW)
+                else:
+                    print("did not place finger")
             
             if ch == '3':
-                print("Place your Finger")
-                for i in range(10):
-                    print("Identify: %s" % str(f.identify()))
-                    time.sleep(0.5)
-            if ch == '4':
+                print("Close: %s" % str(f.close()))
+                f.ser.close()
                 break
-                exit()
+            #    exit()
+            
+       # exit()       
+                
+            
         
-        '''        
+                
 
         # print("LED On: %s" % str(f.set_led(True)))
         # time.sleep(1)
@@ -439,23 +494,19 @@ if __name__ == '__main__':
         #     print("Finger Pressed: %s" % str(f.is_finger_pressed()))
         #     time.sleep(0.5)
 
-        print("Get Enrolled Cnt: %s" % str(f.get_enrolled_cnt()))
+        #print("Get Enrolled Cnt: %s" % str(f.get_enrolled_cnt()))
 
         #print("Delete: %s" % str(f.delete()))
 
         #print("Get Enrolled Cnt: %s" % str(f.get_enrolled_cnt()))
 
-        for i in range(10):
-            print(i)
-            print("Enroll: %s" % str(f.enroll()))
-            print("Get Enrolled Cnt: %s" % str(f.get_enrolled_cnt()))
-            time.sleep(1)
+        #for i in range(10):
+           # print(i)
+            #print("Enroll: %s" % str(f.enroll()))
+           # print("Get Enrolled Cnt: %s" % str(f.get_enrolled_cnt()))
+            #time.sleep(1)
         
 
-        for i in range(10):
-            print("Identify: %s" % str(f.identify()))
-            time.sleep(1)
-
-        print("Close: %s" % str(f.close()))
-
-        f.ser.close()
+        #for i in range(10):
+            #print("Identify: %s" % str(f.identify()))
+           # time.sleep(1)
