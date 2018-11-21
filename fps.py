@@ -393,8 +393,8 @@ class Fingerprint():
                         
 
     def identify(self):
-        if not self.capture_finger():
-            return None
+        while not self.capture_finger():
+            time.sleep(0.1)
         if self._send_packet("Identify1_N"):
             ack, param, _, _ = self._read_packet()
             if ack:
